@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#0f172a">
+<title>NAS容量</title>
+<style>
+  :root {
+    --bg: #f1f5f9; --card: #ffffff; --text: #0f172a; --sub: #64748b;
+    --track: #e2e8f0; --ok: #10b981; --warn: #f59e0b; --bad: #ef4444; --line: #e2e8f0;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f172a; --card: #1e293b; --text: #f1f5f9; --sub: #94a3b8;
+      --track: #334155; --line: #334155;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  main { max-width: 560px; margin: 0 auto; padding: 16px 16px 40px; }
+  header { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin: 8px 0 16px; }
+  h1 { font-size: 22px; margin: 0; }
+  #updated { font-size: 13px; color: var(--sub); text-align: right; }
+  #updated.stale { color: var(--bad); font-weight: 600; }
+  section { background: var(--card); border-radius: 16px; padding: 16px; margin-bottom: 14px; }
+  h2 { font-size: 15px; margin: 0 0 12px; color: var(--sub); font-weight: 600; display: flex; justify-content: space-between; }
+  .disk + .disk { border-top: 1px solid var(--line); margin-top: 14px; padding-top: 14px; }
+  .row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .name { font-weight: 600; font-size: 16px; }
+  .pct { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .bar { height: 10px; border-radius: 99px; background: var(--track); overflow: hidden; margin: 8px 0 6px; }
+  .bar > i { display: block; height: 100%; border-radius: 99px; }
+  .detail { font-size: 13px; color: var(--sub); font-variant-numeric: tabular-nums; }
+  .msg { color: var(--sub); font-size: 14px; }
+  .err { color: var(--bad); font-size: 14px; }
+  button {
+    width: 100%; padding: 14px; border: 0; border-radius: 14px; font-size: 16px; font-weight: 600;
+    background: var(--card); color: var(--text);
+  }
+  button:active { opacity: .7; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>NAS容量</h1>
+    <div id="updated"></div>
+  </header>
+  <div id="content"><p class="msg">読み込み中…</p></div>
+  <button id="reload" type="button">更新</button>
+</main>
+<script>
+  const gistId = location.hash.replace(/^#/, "").trim();
+  const content = document.getElementById("content");
+  const updatedEl = document.getElementById("updated");
+
+  const gb = b => (b / 1024 ** 3).toLocaleString("ja-JP", { maximumFractionDigits: 1, minimumFractionDigits: 1 }) + " GB";
+  const color = p => p >= 90 ? "var(--bad)" : p >= 75 ? "var(--warn)" : "var(--ok)";
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+  function diskHtml(d) {
+    const used = d.total - d.free;
+    const p = d.total > 0 ? Math.round(used / d.total * 100) : 0;
+    return `<div class="disk">
+      <div class="row"><span class="name">${esc(d.name)}</span><span class="pct" style="color:${color(p)}">${p}%</span></div>
+      <div class="bar"><i style="width:${p}%;background:${color(p)}"></i></div>
+      <div class="detail">空き ${gb(d.free)} ／ 全体 ${gb(d.total)}</div>
+    </div>`;
+  }
+
+  function section(title, disks, note) {
+    const body = note ? `<p class="err">${note}</p>` : disks.map(diskHtml).join("");
+    const total = disks.reduce((a, d) => a + d.total, 0), free = disks.reduce((a, d) => a + d.free, 0);
+    const sum = !note && disks.length > 1 ? `<span>空き計 ${gb(free)}</span>` : "";
+    return `<section><h2><span>${title}</span>${sum}</h2>${body}</section>`;
+  }
+
+  async function load() {
+    if (!gistId) { content.innerHTML = '<p class="err">URLの末尾に「#データID」が必要です。</p>'; return; }
+    updatedEl.textContent = "";
+    try {
+      const r = await fetch(`https://api.github.com/gists/${encodeURIComponent(gistId)}`, { cache: "no-store" });
+      if (!r.ok) throw new Error(r.status === 403 ? "取得回数の上限です。しばらく待ってから更新してください" : `取得できません (${r.status})`);
+      const g = await r.json();
+      const data = JSON.parse(g.files["nas-status.json"].content);
+      if (!data.updated) { content.innerHTML = '<p class="msg">まだデータがありません。PCの起動後10分以内に表示されます。</p>'; return; }
+      const t = new Date(data.updated);
+      const ageMin = (Date.now() - t) / 60000;
+      updatedEl.textContent = (ageMin > 25 ? "PC停止中？ " : "") +
+        t.toLocaleString("ja-JP", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) + " 時点";
+      updatedEl.className = ageMin > 25 ? "stale" : "";
+      content.innerHTML =
+        section("ラズパイ", data.pi || [], data.pi_ok ? "" : "応答なし（ラズパイの電源・ケーブルを確認）") +
+        section("PC", data.pc || [], "");
+    } catch (e) {
+      content.innerHTML = `<p class="err">${esc(e.message)}</p>`;
+    }
+  }
+
+  document.getElementById("reload").addEventListener("click", load);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) load(); });
+  load();
+</script>
+</body>
+</html>
