@@ -2,109 +2,314 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="robots" content="noindex">
-<meta name="theme-color" content="#0f172a">
+<meta name="theme-color" content="#0b1020">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="NAS容量">
 <title>NAS容量</title>
 <style>
   :root {
-    --bg: #f1f5f9; --card: #ffffff; --text: #0f172a; --sub: #64748b;
-    --track: #e2e8f0; --ok: #10b981; --warn: #f59e0b; --bad: #ef4444; --line: #e2e8f0;
+    --bg: #0b1020;
+    --bg2: #121a33;
+    --card: rgba(255,255,255,.06);
+    --card-line: rgba(255,255,255,.09);
+    --text: #eef2ff;
+    --sub: #9aa6c7;
+    --track: rgba(255,255,255,.10);
+    --ok: #34d399; --ok2: #22d3ee;
+    --warn: #fbbf24; --warn2: #fb923c;
+    --bad: #f87171; --bad2: #f43f5e;
+    --accent: #818cf8;
   }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #0f172a; --card: #1e293b; --text: #f1f5f9; --sub: #94a3b8;
-      --track: #334155; --line: #334155;
-    }
-  }
-  * { box-sizing: border-box; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { touch-action: pan-y; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   body {
-    margin: 0; background: var(--bg); color: var(--text);
+    margin: 0; min-height: 100vh; color: var(--text);
+    background:
+      radial-gradient(900px 500px at 110% -10%, rgba(129,140,248,.28), transparent 60%),
+      radial-gradient(700px 420px at -20% 10%, rgba(34,211,238,.18), transparent 60%),
+      linear-gradient(180deg, var(--bg2), var(--bg) 60%);
+    background-attachment: fixed;
     font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", sans-serif;
     -webkit-font-smoothing: antialiased;
+    user-select: none; -webkit-user-select: none;
   }
-  main { max-width: 560px; margin: 0 auto; padding: 16px 16px 40px; }
-  header { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin: 8px 0 16px; }
-  h1 { font-size: 22px; margin: 0; }
-  #updated { font-size: 13px; color: var(--sub); text-align: right; }
-  #updated.stale { color: var(--bad); font-weight: 600; }
-  section { background: var(--card); border-radius: 16px; padding: 16px; margin-bottom: 14px; }
-  h2 { font-size: 15px; margin: 0 0 12px; color: var(--sub); font-weight: 600; display: flex; justify-content: space-between; }
-  .disk + .disk { border-top: 1px solid var(--line); margin-top: 14px; padding-top: 14px; }
-  .row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
-  .name { font-weight: 600; font-size: 16px; }
-  .pct { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
-  .bar { height: 10px; border-radius: 99px; background: var(--track); overflow: hidden; margin: 8px 0 6px; }
-  .bar > i { display: block; height: 100%; border-radius: 99px; }
-  .detail { font-size: 13px; color: var(--sub); font-variant-numeric: tabular-nums; }
-  .msg { color: var(--sub); font-size: 14px; }
-  .err { color: var(--bad); font-size: 14px; }
-  button {
-    width: 100%; padding: 14px; border: 0; border-radius: 14px; font-size: 16px; font-weight: 600;
-    background: var(--card); color: var(--text);
+  main {
+    max-width: 560px; margin: 0 auto;
+    padding: calc(14px + env(safe-area-inset-top)) 16px calc(28px + env(safe-area-inset-bottom));
   }
-  button:active { opacity: .7; }
+
+  /* ヘッダー */
+  .top { display: flex; align-items: center; justify-content: space-between; margin: 6px 2px 16px; }
+  .brand { display: flex; align-items: center; gap: 10px; }
+  .logo {
+    width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center;
+    background: linear-gradient(135deg, #6366f1, #22d3ee); box-shadow: 0 6px 18px rgba(99,102,241,.45);
+  }
+  .logo svg { width: 22px; height: 22px; }
+  h1 { font-size: 20px; margin: 0; letter-spacing: .02em; }
+  .status { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--sub); margin-top: 2px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--sub); }
+  .dot.live { background: var(--ok); box-shadow: 0 0 0 0 rgba(52,211,153,.7); animation: pulse 2s infinite; }
+  .dot.stale { background: var(--bad); }
+  @keyframes pulse { 70% { box-shadow: 0 0 0 8px rgba(52,211,153,0); } 100% { box-shadow: 0 0 0 0 rgba(52,211,153,0); } }
+  .refresh {
+    width: 42px; height: 42px; border-radius: 50%; border: 1px solid var(--card-line);
+    background: var(--card); color: var(--text); display: grid; place-items: center; cursor: pointer;
+  }
+  .refresh svg { width: 20px; height: 20px; transition: transform .6s; }
+  .refresh.spin svg { animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* カード共通 */
+  .card {
+    background: var(--card); border: 1px solid var(--card-line); border-radius: 22px;
+    padding: 18px; margin-bottom: 14px;
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    animation: rise .45s ease both;
+  }
+  @keyframes rise { from { opacity: 0; transform: translateY(8px); } }
+
+  /* サマリー */
+  .hero { display: flex; align-items: center; gap: 18px; }
+  .ring { position: relative; width: 132px; height: 132px; flex: none; }
+  .ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+  .ring .center { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; }
+  .ring .big { font-size: 30px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+  .ring .big small { font-size: 15px; font-weight: 700; }
+  .ring .cap { font-size: 11px; color: var(--sub); margin-top: 4px; }
+  .hero-info { flex: 1; min-width: 0; }
+  .label { font-size: 12px; color: var(--sub); letter-spacing: .04em; }
+  .hero-free { font-size: 28px; font-weight: 800; margin: 2px 0 10px; font-variant-numeric: tabular-nums; }
+  .hero-free span { font-size: 15px; font-weight: 700; color: var(--sub); margin-left: 3px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip {
+    font-size: 12px; padding: 5px 10px; border-radius: 99px; background: rgba(255,255,255,.07);
+    color: var(--sub); font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+  .chip b { color: var(--text); font-weight: 700; }
+
+  /* セクション */
+  .sec-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .sec-title { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 16px; }
+  .ico { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: rgba(255,255,255,.08); }
+  .ico svg { width: 19px; height: 19px; }
+  .badge { font-size: 11px; padding: 4px 9px; border-radius: 99px; font-weight: 700; }
+  .badge.on { background: rgba(52,211,153,.15); color: var(--ok); }
+  .badge.off { background: rgba(248,113,113,.15); color: var(--bad); }
+
+  .disk + .disk { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--card-line); }
+  .disk-top { display: flex; justify-content: space-between; align-items: flex-end; gap: 10px; }
+  .disk-name { font-weight: 700; font-size: 15px; }
+  .disk-sub { font-size: 12px; color: var(--sub); margin-top: 3px; font-variant-numeric: tabular-nums; }
+  .disk-pct { font-size: 26px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+  .disk-pct small { font-size: 13px; }
+  .bar { position: relative; height: 12px; border-radius: 99px; background: var(--track); overflow: hidden; margin: 10px 0 8px; }
+  .bar > i {
+    position: absolute; left: 0; top: 0; bottom: 0; border-radius: 99px; width: 0;
+    transition: width 1s cubic-bezier(.2,.8,.2,1);
+  }
+  .legend { display: flex; justify-content: space-between; font-size: 12px; color: var(--sub); font-variant-numeric: tabular-nums; }
+  .legend b { color: var(--text); font-weight: 700; }
+
+  /* CPU・メモリ */
+  .sys { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+  .gauge { background: rgba(255,255,255,.05); border-radius: 16px; padding: 12px; display: flex; align-items: center; gap: 10px; }
+  .mini { position: relative; width: 52px; height: 52px; flex: none; }
+  .mini svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+  .mini b { position: absolute; inset: 0; display: grid; place-items: center; font-size: 13px; font-variant-numeric: tabular-nums; }
+  .g-label { font-size: 12px; color: var(--sub); }
+  .g-val { font-size: 13px; font-weight: 700; margin-top: 2px; font-variant-numeric: tabular-nums; }
+  .meta { display: flex; flex-wrap: wrap; gap: 6px; margin: -6px 0 16px; }
+  .note { font-size: 14px; color: var(--sub); text-align: center; padding: 10px 0; }
+  .note.err { color: var(--bad); }
+  .foot { text-align: center; font-size: 11px; color: var(--sub); margin-top: 6px; }
 </style>
 </head>
 <body>
 <main>
-  <header>
-    <h1>NAS容量</h1>
-    <div id="updated"></div>
-  </header>
-  <div id="content"><p class="msg">読み込み中…</p></div>
-  <button id="reload" type="button">更新</button>
+  <div class="top">
+    <div class="brand">
+      <div class="logo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="7" rx="2"/><rect x="3" y="13" width="18" height="7" rx="2"/><path d="M7 7.5h.01M7 16.5h.01"/></svg>
+      </div>
+      <div>
+        <h1>NAS容量</h1>
+        <div class="status"><span class="dot" id="dot"></span><span id="updated">読み込み中…</span></div>
+      </div>
+    </div>
+    <button class="refresh" id="reload" type="button" aria-label="更新">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+    </button>
+  </div>
+
+  <div id="content"></div>
+  <div class="foot" id="foot"></div>
 </main>
+
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <linearGradient id="g-ok" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#34d399"/><stop offset="1" stop-color="#22d3ee"/></linearGradient>
+    <linearGradient id="g-warn" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fbbf24"/><stop offset="1" stop-color="#fb923c"/></linearGradient>
+    <linearGradient id="g-bad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f87171"/><stop offset="1" stop-color="#f43f5e"/></linearGradient>
+  </defs>
+</svg>
+
 <script>
+  // ピンチ・ダブルタップでの拡大を止める（iOS Safari は viewport 指定を無視するため）
+  ["gesturestart", "gesturechange", "gestureend"].forEach(t =>
+    document.addEventListener(t, e => e.preventDefault(), { passive: false }));
+  document.addEventListener("touchmove", e => { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
+  let lastTouch = 0;
+  document.addEventListener("touchend", e => {
+    const now = Date.now();
+    if (now - lastTouch < 350) e.preventDefault();
+    lastTouch = now;
+  }, { passive: false });
+
   const gistId = location.hash.replace(/^#/, "").trim();
-  const content = document.getElementById("content");
-  const updatedEl = document.getElementById("updated");
+  const $ = id => document.getElementById(id);
+  const ICON = {
+    pi: '<svg viewBox="0 0 24 24" fill="none" stroke="#f472b6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 14h3M1 9h3M1 14h3"/></svg>',
+    pc: '<svg viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>',
+  };
 
-  const gb = b => (b / 1024 ** 3).toLocaleString("ja-JP", { maximumFractionDigits: 1, minimumFractionDigits: 1 }) + " GB";
-  const color = p => p >= 90 ? "var(--bad)" : p >= 75 ? "var(--warn)" : "var(--ok)";
+  const fmt = b => {
+    const g = b / 1024 ** 3;
+    return g >= 1000 ? { v: (g / 1024).toFixed(2), u: "TB" } : { v: g.toFixed(g >= 100 ? 0 : 1), u: "GB" };
+  };
+  const size = b => { const f = fmt(b); return f.v + " " + f.u; };
+  const level = p => p >= 90 ? "bad" : p >= 75 ? "warn" : "ok";
+  const grad = p => ({ ok: "linear-gradient(90deg,#34d399,#22d3ee)", warn: "linear-gradient(90deg,#fbbf24,#fb923c)", bad: "linear-gradient(90deg,#f87171,#f43f5e)" })[level(p)];
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const pctOf = d => d.total > 0 ? Math.round((d.total - d.free) / d.total * 100) : 0;
+  const ago = t => {
+    const m = Math.floor((Date.now() - t) / 60000);
+    return m < 1 ? "たった今" : m < 60 ? `${m}分前` : m < 1440 ? `${Math.floor(m / 60)}時間前` : `${Math.floor(m / 1440)}日前`;
+  };
 
-  function diskHtml(d) {
-    const used = d.total - d.free;
-    const p = d.total > 0 ? Math.round(used / d.total * 100) : 0;
-    return `<div class="disk">
-      <div class="row"><span class="name">${esc(d.name)}</span><span class="pct" style="color:${color(p)}">${p}%</span></div>
-      <div class="bar"><i style="width:${p}%;background:${color(p)}"></i></div>
-      <div class="detail">空き ${gb(d.free)} ／ 全体 ${gb(d.total)}</div>
+  function hero(data) {
+    const all = [...(data.pi || []), ...(data.pc || [])];
+    const nas = (data.pi || []).find(d => d.name.startsWith("NAS")) || (data.pi || [])[0];
+    const main = nas || all[0];
+    const p = pctOf(main);
+    const r = 54, c = 2 * Math.PI * r, off = c * (1 - p / 100);
+    const total = all.reduce((a, d) => a + d.total, 0), free = all.reduce((a, d) => a + d.free, 0);
+    const f = fmt(main.free);
+    return `<div class="card hero">
+      <div class="ring">
+        <svg viewBox="0 0 128 128">
+          <circle cx="64" cy="64" r="${r}" fill="none" stroke="rgba(255,255,255,.10)" stroke-width="12"/>
+          <circle cx="64" cy="64" r="${r}" fill="none" stroke="url(#g-${level(p)})" stroke-width="12" stroke-linecap="round"
+            stroke-dasharray="${c}" stroke-dashoffset="${c}" data-off="${off}" style="transition:stroke-dashoffset 1.1s cubic-bezier(.2,.8,.2,1)"/>
+        </svg>
+        <div class="center"><div><div class="big">${p}<small>%</small></div><div class="cap">${nas ? "NAS使用率" : "使用率"}</div></div></div>
+      </div>
+      <div class="hero-info">
+        <div class="label">${nas ? "NASの空き" : "空き"}</div>
+        <div class="hero-free">${f.v}<span>${f.u}</span></div>
+        <div class="chips">
+          <span class="chip">全体 <b>${size(main.total)}</b></span>
+          <span class="chip">全ドライブ空き <b>${size(free)}</b></span>
+          <span class="chip">合計容量 <b>${size(total)}</b></span>
+        </div>
+      </div>
     </div>`;
   }
 
-  function section(title, disks, note) {
-    const body = note ? `<p class="err">${note}</p>` : disks.map(diskHtml).join("");
-    const total = disks.reduce((a, d) => a + d.total, 0), free = disks.reduce((a, d) => a + d.free, 0);
-    const sum = !note && disks.length > 1 ? `<span>空き計 ${gb(free)}</span>` : "";
-    return `<section><h2><span>${title}</span>${sum}</h2>${body}</section>`;
+  function disk(d) {
+    const p = pctOf(d);
+    return `<div class="disk">
+      <div class="disk-top">
+        <div><div class="disk-name">${esc(d.name)}</div><div class="disk-sub">全体 ${size(d.total)}</div></div>
+        <div class="disk-pct" style="color:var(--${level(p)})">${p}<small>%</small></div>
+      </div>
+      <div class="bar"><i data-w="${p}" style="background:${grad(p)}"></i></div>
+      <div class="legend"><span>使用 <b>${size(d.total - d.free)}</b></span><span>空き <b>${size(d.free)}</b></span></div>
+    </div>`;
   }
 
+  function mini(label, p, val) {
+    p = Math.max(0, Math.min(100, Math.round(p)));
+    const r = 21, c = 2 * Math.PI * r;
+    return `<div class="gauge">
+      <div class="mini"><svg viewBox="0 0 52 52">
+        <circle cx="26" cy="26" r="${r}" fill="none" stroke="rgba(255,255,255,.10)" stroke-width="6"/>
+        <circle cx="26" cy="26" r="${r}" fill="none" stroke="url(#g-${level(p)})" stroke-width="6" stroke-linecap="round"
+          stroke-dasharray="${c}" stroke-dashoffset="${c}" data-off="${c * (1 - p / 100)}" style="transition:stroke-dashoffset 1.1s cubic-bezier(.2,.8,.2,1)"/>
+      </svg><b>${p}%</b></div>
+      <div><div class="g-label">${label}</div><div class="g-val">${val}</div></div>
+    </div>`;
+  }
+  const uptime = s => { const d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600); return d ? `${d}日${h}時間` : `${h}時間${Math.floor(s % 3600 / 60)}分`; };
+
+  function sysBlock(s) {
+    if (!s) return "";
+    const memP = s.mem_total ? s.mem_used / s.mem_total * 100 : 0;
+    const chips = [`<span class="chip">連続稼働 <b>${uptime(s.uptime)}</b></span>`];
+    if (s.temp != null) chips.push(`<span class="chip">CPU温度 <b style="color:var(--${s.temp >= 75 ? "bad" : s.temp >= 65 ? "warn" : "ok"})">${Number(s.temp).toFixed(1)}℃</b></span>`);
+    return `<div class="sys">
+        ${mini("CPU", s.cpu, `${s.cores}コア`)}
+        ${mini("メモリ", memP, `${size(s.mem_used)} / ${size(s.mem_total)}`)}
+      </div>
+      <div class="meta">${chips.join("")}</div>`;
+  }
+
+  function section(key, title, disks, online, sys) {
+    const badge = online === undefined ? "" :
+      `<span class="badge ${online ? "on" : "off"}">${online ? "オンライン" : "応答なし"}</span>`;
+    const body = online === false
+      ? '<div class="note err">ラズパイから応答がありません。電源とケーブルを確認してください。</div>'
+      : sysBlock(sys) + (disks.map(disk).join("") || '<div class="note">ドライブがありません</div>');
+    return `<div class="card">
+      <div class="sec-head"><div class="sec-title"><span class="ico">${ICON[key]}</span>${title}</div>${badge}</div>
+      ${body}
+    </div>`;
+  }
+
+  function animate() {
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      document.querySelectorAll(".bar > i").forEach(el => el.style.width = el.dataset.w + "%");
+      document.querySelectorAll("circle[data-off]").forEach(el => el.style.strokeDashoffset = el.dataset.off);
+    }));
+  }
+
+  let busy = false;
   async function load() {
-    if (!gistId) { content.innerHTML = '<p class="err">URLの末尾に「#データID」が必要です。</p>'; return; }
-    updatedEl.textContent = "";
+    if (busy) return;
+    if (!gistId) { $("content").innerHTML = '<div class="card note err">URLの末尾に「#データID」が必要です。</div>'; $("updated").textContent = "設定なし"; return; }
+    busy = true; $("reload").classList.add("spin");
     try {
       const r = await fetch(`https://api.github.com/gists/${encodeURIComponent(gistId)}`, { cache: "no-store" });
-      if (!r.ok) throw new Error(r.status === 403 ? "取得回数の上限です。しばらく待ってから更新してください" : `取得できません (${r.status})`);
+      if (!r.ok) throw new Error(r.status === 403 ? "取得回数の上限です。しばらく待ってから更新してください。" : `データを取得できません（${r.status}）`);
       const g = await r.json();
       const data = JSON.parse(g.files["nas-status.json"].content);
-      if (!data.updated) { content.innerHTML = '<p class="msg">まだデータがありません。PCの起動後10分以内に表示されます。</p>'; return; }
+      if (!data.updated) {
+        $("content").innerHTML = '<div class="card note">まだデータがありません。PCの起動後5分以内に表示されます。</div>';
+        $("updated").textContent = "データ待ち"; return;
+      }
       const t = new Date(data.updated);
-      const ageMin = (Date.now() - t) / 60000;
-      updatedEl.textContent = (ageMin > 25 ? "PC停止中？ " : "") +
-        t.toLocaleString("ja-JP", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) + " 時点";
-      updatedEl.className = ageMin > 25 ? "stale" : "";
-      content.innerHTML =
-        section("ラズパイ", data.pi || [], data.pi_ok ? "" : "応答なし（ラズパイの電源・ケーブルを確認）") +
-        section("PC", data.pc || [], "");
+      const stale = (Date.now() - t) / 60000 > 25;
+      $("dot").className = "dot " + (stale ? "stale" : "live");
+      $("updated").textContent = (stale ? "PC停止中？ · " : "") + ago(t) + "に更新";
+      $("foot").textContent = t.toLocaleString("ja-JP", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) + " 時点のデータ（PCが5分ごとに更新）";
+      $("content").innerHTML = hero(data) +
+        section("pi", "ラズパイ", data.pi || [], !!data.pi_ok, data.pi_sys) +
+        section("pc", "PC", data.pc || [], undefined, data.pc_sys);
+      animate();
     } catch (e) {
-      content.innerHTML = `<p class="err">${esc(e.message)}</p>`;
+      $("content").innerHTML = `<div class="card note err">${esc(e.message)}</div>`;
+      $("updated").textContent = "取得失敗"; $("dot").className = "dot stale";
+    } finally {
+      busy = false; $("reload").classList.remove("spin");
     }
   }
 
-  document.getElementById("reload").addEventListener("click", load);
+  $("reload").addEventListener("click", load);
   document.addEventListener("visibilitychange", () => { if (!document.hidden) load(); });
+  setInterval(() => { if (!document.hidden) load(); }, 5 * 60 * 1000);
   load();
 </script>
 </body>
